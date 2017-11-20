@@ -22,22 +22,26 @@ def parseURL(urlString):
 
 def parseBody(bodyString):
     """Parses a request body and replaces all placeholders/variables with the associated values from the environment file."""
+
     finalBody = bodyString
+
     patterns = {"postman": "{{[\w]*}}*", "swagger": "{[\w]*}*", "curl": "{[\w]*}*"}
     parameters = re.findall(patterns[args.mode], bodyString)
 
     for param in parameters:
+        #print "param: " + param
         cleanParam = param.replace("{","").replace("}","")
-        if cleanParam not in env_var:
-            print "!ERROR found parameter not in ENVIRONMENT VARIABLES: " + str(cleanParam)
-            if cleanParam not in missing_parameters:
-                missing_parameters.append(cleanParam)
-        finalBody = finalBody.replace(param, env_var.get(cleanParam, ""))
+        #print cleanParam
+        if "" != cleanParam:
+            if cleanParam not in env_var:
+                print "!ERROR found parameter not in ENVIRONMENT VARIABLES: %s !" % cleanParam
+                if cleanParam not in missing_parameters:
+                    missing_parameters.append(cleanParam)
+            finalBody = finalBody.replace(param, env_var.get(cleanParam, ""))
 
-    # make sure we end up with a json like string
-    if len(finalBody) > 0:
-        if finalBody[0] != "{":
-            finalBody = "{" + finalBody
+    # make sure we end up with a json string with double quote delimiters
+    finalBody = finalBody.replace("\'","\"")
+
     return finalBody
 
 
@@ -124,6 +128,21 @@ def writeAuditLog():
         csvwriter.writerows(audit_log)
 
 
+def parseHeaders(headerFile, headerDict):
+    print "\nStarting to parse headers file: " + str(headerFile)
+    header_data = json.loads(open(headerFile).read())
+    for value in header_data["values"]:
+        #header_data[value["key"]] = str(value["value"])
+        headerDict[str(value["key"])] = str(value["value"])
+    if(args.verbose):
+        print "---------------------------------------------------"
+        print "parsed header file:  " + str(headerFile)
+        print "current headers: "
+        print str(headerDict)
+
+    return headerDict
+
+
 # Print splash screen
 def printSplash():
     print "\n"
@@ -138,20 +157,22 @@ def printSplash():
 
 parser = argparse.ArgumentParser(description="Cold Salt - automating API requests from common collection files.")
 parser.add_argument("-a","--allmethods", help="Make API calls for all HTTP methods including state change related methods.", action="store_true", default="false")
-parser.add_argument("--mode", choices=['curl', 'postman', 'swagger'], help="Which mode, or collection type, to use. Choices are 'curl', 'postman', or 'swagger'")
-parser.add_argument("--proxy", help="IP:Port of proxy to use. Defaults to localhost:8080.", default="127.0.0.1:8080")
 parser.add_argument("--burpbuddy", help="IP:port of Burp Budy instance. Defaults to localhost:8081.", default="127.0.0.1:8081")
-parser.add_argument("-i", "--input", help="The JSON collection file, Postman or Swagger, to parse.")
-parser.add_argument("-e", "--environment", help="The environment.json file to parse.")
-parser.add_argument("-v", "--verbose", help="Enable verbose output.", action="store_true")
-parser.add_argument("--output", help="write output/audit log to a csv")
 parser.add_argument("--checkonly", help="enable debug mode. No requests will be sent", action="store_true", default="false")
+parser.add_argument("-c","--contenttype", help="Force or override Content-Type on requests")
+parser.add_argument("-e", "--environment", help="The environment.json file to parse.")
+parser.add_argument("--headers", help="The headers.json file to parse.")
+parser.add_argument("-i", "--input", help="The JSON collection file, Postman or Swagger, to parse.")
+parser.add_argument("--mode", choices=['curl', 'postman', 'swagger'], help="Which mode, or collection type, to use. Choices are 'curl', 'postman', or 'swagger'")
+parser.add_argument("--output", help="write output/audit log to a csv")
+parser.add_argument("--proxy", help="IP:Port of proxy to use. Defaults to localhost:8080.", default="127.0.0.1:8080")
+parser.add_argument("-v", "--verbose", help="Enable verbose output.", action="store_true")
 parser.add_argument("-x", "--xperimental", help="enable Xperimental Burp mode", action="store_true")
 args = parser.parse_args()
 
 
 # global variables
-version = "beta 0.3"
+version = "beta 0.5.0"
 safe_methods = ["GET", "HEAD", "OPTIONS"]
 standard_methods = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE", "OPTIONS"]
 env_var = dict()
@@ -169,7 +190,7 @@ printSplash()
 
 print args.input
 
-if(args.environment):
+if args.environment:
     print "\nStarting to parse environment file: " + str(args.environment)
     env_data = json.loads(open(args.environment).read())
     for value in env_data["values"]:
@@ -180,9 +201,12 @@ if(args.environment):
         print "found these environment variables: "
         print str(env_var)
 
+
+
 # let's build a dictionary for each request and put all of them into a list
 # each endpoint dictionary is {name, url, method, headers[] }
 collection_items = []
+globalHeaders = dict()
 
 _file = args.input
 # parse disparate input formats into simple dict entries
@@ -205,6 +229,22 @@ if args.allmethods == True:
 else:
     allowed_methods = safe_methods
 
+# do header stuff.....
+# TODO see if this step can be done when the dict is built...
+globalHeaders["User-Agent"] = "coldsalt"
+# see if we've got a header file to parse...
+if args.headers:
+    globalHeaders = parseHeaders(headerFile=args.headers, headerDict=globalHeaders)
+
+# force Content-Type overrides other header settings
+if "None" != str(args.contenttype):
+    #print "overriding content type!"
+    if "content-type" in headers.keys():
+        globalHeaders["content-type"] = args.contenttype
+    elif "Content-Type" in headers.keys():
+        globalHeaders["Content-Type"] = args.contenttype
+
+
 for endpoint in collection_items:
     if endpoint["method"] in allowed_methods:
         headers = dict()
@@ -215,9 +255,10 @@ for endpoint in collection_items:
             print body
         else:
             body = ""
-        # TODO see if this step can be done when the dict is built...
-        headers = fixHeaders(endpoint["headers"])
-        headers["User-Agent"] = "coldsalt"
+
+        # merge global headers
+        headers = dict(fixHeaders(endpoint["headers"]).items() + globalHeaders.items())
+
         if(args.verbose):
             print "-------------"
             print "Request"

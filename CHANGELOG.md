@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.5.0
+
+- Added a new flag ```--headers``` to allow for arbitrary headers added to all requests.
+
+
+## v0.4.1
+
+### Fixes
+- Fixed Swagger file parsing when body parameters are inline objects instead of references.
+
+
+## v0.4
+
+## New Features
+- Added a new flag ```-c``` and ```--contenttype``` to force or override the content-type header sent on requests.
+
+### Fixes
+- When parsing body data for Swagger, the resulting string wasn't proper JSON. This has been fixed.  
+
+
 ## v0.3
 
 ### New Features  

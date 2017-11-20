@@ -36,24 +36,28 @@ python coldsalt.py --mode swagger -i swagger_example.json --checkonly
 python coldsalt.py --mode postman -i postman_example.json -e environment.json --output awesome.csv
 
 -h, --help            show this help message and exit
--a, --allmethods     Make API calls for all HTTP methods including state
+-a, --allmethods      Make API calls for all HTTP methods including state
                       change related methods.
---mode {curl,postman,swagger}
-                      Which mode, or collection type, to use. Choices are
-                      'curl', 'postman', or 'swagger'
---proxy PROXY         IP:Port of proxy to use. Defaults to localhost:8080.
---burpbuddy BURP_BUDDY
+--burpbuddy BURPBUDDY
                       IP:port of Burp Budy instance. Defaults to
                       localhost:8081.
+--checkonly           enable debug mode. No requests will be sent
+-c CONTENTTYPE, --contenttype CONTENTTYPE
+                      Force or override Content-Type on requests
+-e ENVIRONMENT, --environment ENVIRONMENT
+                      The environment.json file to parse.
+--headers HEADERS     The headers.json file to parse.
 -i INPUT, --input INPUT
                       The JSON collection file, Postman or Swagger, to
                       parse.
--e ENVIRONMENT, --environment ENVIRONMENT
-                      The environment.json file to parse.
--v, --verbose         Enable verbose output.
+--mode {curl,postman,swagger}
+                      Which mode, or collection type, to use. Choices are
+                      'curl', 'postman', or 'swagger'
 --output OUTPUT       write output/audit log to a csv
---checkonly           enable debug mode. No requests will be sent
+--proxy PROXY         IP:Port of proxy to use. Defaults to localhost:8080.
+-v, --verbose         Enable verbose output.
 -x, --xperimental     enable Xperimental Burp mode
+
 ```
 
 By default, Coldcalt will only send GET, HEAD, and OPTION requests. You can override this with the -a and --allmethods flags.
@@ -74,7 +78,24 @@ Once all the things check out, make sure you have Burp running on 8080 and run t
 
 If you are using a Postman file, make sure it is Postman v2.
 
-To use curl requets, make sure they are in a text file, one request per line with the host at the end of the command. Generally, you can get a file ready with a combo of grep and awk.
+To use curl requests, make sure they are in a text file, one request per line with the host at the end of the command. Generally, you can get a file ready with a combo of grep and awk.
+
+### Setting Headers
+
+Suppose you have a Swagger or Postman file that doesn't have any placeholders for required headers, what then?
+
+Coldsalt gives you two options.  
+``` -c CONTENTTYPE, --contenttype CONTENTTYPE ``` can be used to set an arbitrary Content-Type header.  
+``` --headers HEADERS ``` lets you specify a json file that can contain any number of headers in the following format:
+```
+{"name": "generic header file",
+"values": [{"key": "foo", "value": "bar"},
+	{"key": "X-Test", "value": "true"}
+	]}
+```
+
+Headers specified with ```--headers``` will override any duplicated headers from within the Swagger or Postman files.  
+Content-Type set by ```-c``` will override all other Content-Type values.  
 
 ## Contributing
 

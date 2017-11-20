@@ -104,6 +104,7 @@ class CSParserSwagger:
                     if "parameters" in swagger_items[path_key][method_key].keys() :
                         for param in swagger_items[path_key][method_key]["parameters"]:
                             _local_param = param
+                            #print str(_local_param)
                             if "$ref" in param:
                                 # if the param references a global param, grab that param
                                 # and 'overwrite' the 'loop' 'copy'
@@ -111,8 +112,8 @@ class CSParserSwagger:
                                 _local_param = global_params[param_ref]
 
                             if(_local_param["in"] == "header"):
-                                headers[_local_param["name"]] = "{" + _local_param["name"] + "}"
-                                global_params[_local_param["name"]] = _local_param
+                                headers[str(_local_param["name"])] = str("{" + _local_param["name"] + "}")
+                                global_params[str(_local_param["name"])] = str(_local_param)
 
                             if(_local_param["in"] == "query"):
                                 queryString[_local_param["name"]] = "{" + _local_param["name"] + "}"
@@ -121,9 +122,21 @@ class CSParserSwagger:
                             if(_local_param["in"] == "body"):
                                 # get the ref....
                                 _body = {}
-                                _raw_body = swagger_data["definitions"][_local_param["schema"]["$ref"].split("#/definitions/")[1]]["properties"]
-                                for _body_item in _raw_body.keys():
-                                    _body[_body_item] = "{%s}" % (_body_item)
+
+                                #print _local_param["in"]
+                                # check for a schema references
+                                if "$ref" in _local_param["schema"].keys():
+                                    _raw_body = swagger_data["definitions"][_local_param["schema"]["$ref"].split("#/definitions/")[1]]["properties"]
+                                    for _body_item in _raw_body.keys():
+                                        _body[str(_body_item)] = "{%s}" % (str(_body_item))
+                                else:
+                                    # if there is no reference, parse the 'raw' body
+                                    if "type" in _local_param["schema"].keys():
+                                        if "object" == _local_param["schema"]["type"]:
+                                            _raw_body =_local_param["schema"]["properties"]
+                                            for _body_item in _raw_body.keys():
+                                                _body[str(_body_item)] = "{%s}" % (str(_body_item))
+
                                 api_endpoint["body"] = str(_body)
                     # format querysting into url
                     if(bool(queryString)):
