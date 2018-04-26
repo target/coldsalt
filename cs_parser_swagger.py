@@ -94,7 +94,10 @@ class CSParserSwagger:
                     headers = {}
                     queryString = {}
 
-                    api_endpoint['name'] = swagger_items[path_key][method_key]["summary"]
+                    try:
+                        api_endpoint['name'] = swagger_items[path_key][method_key]["summary"]
+                    except KeyError:
+                        api_endpoint['name'] = "%s %s" % (method_key, path_key)
 
                     api_endpoint['method'] = method_key.upper()
                     api_endpoint['body'] = ""

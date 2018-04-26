@@ -14,7 +14,7 @@ def parseURL(urlString):
     for param in parameters:
         cleanParam = param.replace("{","").replace("}","")
         if cleanParam not in env_var:
-            print "!ERROR found parameter not in ENVIRONMENT VARIABLES: " + str(cleanParam)
+            print "[!] Found parameter not in ENVIRONMENT VARIABLES: " + str(cleanParam)
             if cleanParam not in missing_parameters:
                 missing_parameters.append(cleanParam)
         finalUrl = finalUrl.replace(param, env_var.get(cleanParam, ""))
@@ -26,7 +26,11 @@ def parseBody(bodyString):
     finalBody = bodyString
 
     patterns = {"postman": "{{[\w]*}}*", "swagger": "{[\w]*}*", "curl": "{[\w]*}*"}
-    parameters = re.findall(patterns[args.mode], bodyString)
+
+    try:
+        parameters = re.findall(patterns[args.mode], bodyString)
+    except TypeError:
+        parameters = re.findall(patterns[args.mode], json.dumps(bodyString))
 
     for param in parameters:
         #print "param: " + param
@@ -34,15 +38,28 @@ def parseBody(bodyString):
         #print cleanParam
         if "" != cleanParam:
             if cleanParam not in env_var:
-                print "!ERROR found parameter not in ENVIRONMENT VARIABLES: %s !" % cleanParam
+                print "[!] Found parameter not in ENVIRONMENT VARIABLES: %s !" % cleanParam
                 if cleanParam not in missing_parameters:
                     missing_parameters.append(cleanParam)
-            finalBody = finalBody.replace(param, env_var.get(cleanParam, ""))
+            if type(finalBody) is not dict:
+                finalBody = finalBody.replace(param, env_var.get(cleanParam, ""))
+            else:
+                # TODO this only searches two levels deep in JSON dict
+                for key, value in finalBody.items():
+                    if type(value) is dict:
+                        for k, v in finalBody[key].items():
+                            if value == param:
+                                finalBody[key] == env_var.get(cleanParam)
+                    if value == param:
+                        finalBody[key] == env_var.get(cleanParam)
 
     # make sure we end up with a json string with double quote delimiters
-    finalBody = finalBody.replace("\'","\"")
+    if type(finalBody) is not dict:
+        finalBody = finalBody.replace("\'","\"")
 
     return finalBody
+
+
 
 
 def sendRequest(requestUrl, requestMethod, requestHeaders, requestBody):
@@ -78,7 +95,7 @@ def fixHeaders(requestHeaders):
                 newHeaders[key] = env_var.get(value, "")
             else:
                 if value not in missing_parameters:
-                    print "!ERROR found header parameter not in ENVIRONMENT VARIABLES: " + str(value)
+                    print "[!] Found header parameter not in ENVIRONMENT VARIABLES: " + str(value)
                     missing_parameters.append(value)
                 newHeaders[key] = requestHeaders[key]
         else:
@@ -172,7 +189,7 @@ args = parser.parse_args()
 
 
 # global variables
-version = "beta 0.5.0"
+version = "beta 0.7.1"
 safe_methods = ["GET", "HEAD", "OPTIONS"]
 standard_methods = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE", "OPTIONS"]
 env_var = dict()
@@ -252,7 +269,7 @@ for endpoint in collection_items:
         method = endpoint["method"]
         if "body" in endpoint:
             body = parseBody(endpoint["body"])
-            print body
+            #print body
         else:
             body = ""
 

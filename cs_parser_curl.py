@@ -4,6 +4,8 @@
 ## Author: jason nordenstam
 ####
 
+import json
+
 class CSParserCurl:
 
     def __init__(self, verbose = False):
@@ -18,7 +20,7 @@ class CSParserCurl:
             lines = f.readlines()
 
         if self.verbose:
-            print "Found %s lines..." % len(_lines)
+            print "Found %s lines..." % len(lines)
 
         for line in lines:
             if line.find("\'") > 0:
@@ -59,13 +61,47 @@ class CSParserCurl:
             name = method + " " + base_name
 
             api_endpoint['name'] = name
-        
+
+            # TODO this really only supports json data with -d
+            # TODO make this handle --data and non-jsaon data
+            # data - could be -d or --data
+            brk_str = ""
+            if "--data" in line:
+                 brk_str = "data"
+            elif "-d" in line:
+                brk_str = "d"
+
+            # if no data, do nothing
+            if brk_str != "":
+                tmp = line.split("-")
+                for x in tmp:
+                    if x.startswith(brk_str):
+                        # slice out the data, add the length of the brk_str since find will
+                        # return the start index of our string
+                        tmp_data = x[x.find(brk_str)+len(brk_str):].strip()
+                        # need to clean up opening and closing quotes
+                        # determine if JSON or form encoded
+                        #print tmp_data
+                        if tmp_data[1:len(tmp_data)-1].startswith("{"):
+                            try:
+                                jsn_data = json.loads(tmp_data[1:len(tmp_data)-1])
+                            except ValueError as e:
+                                print "[!] Error occured parsing json. Please verify format is correct."
+                                jsn_data = ""
+
+                            api_endpoint["body"] = jsn_data
+                        else:
+                            api_endpoint["body"] = tmp_data[1:len(tmp_data)-1]
+            else:
+                api_endpoint["body"] = ""
+
             endpoint_collection.append(api_endpoint)
 
             if(self.verbose):
                 print "    " +  api_endpoint["name"]
                 print "      " + api_endpoint["url"]
                 print "      " + api_endpoint["method"]
+                print "      " + str(api_endpoint["body"])
                 print "      ----------------"
 
         return endpoint_collection

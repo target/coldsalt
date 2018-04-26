@@ -1,5 +1,37 @@
 # Changelog
 
+## v0.7.1  
+
+### New Features  
+- Added some robustness to the way variables are handled with Curl requests with JSON data. It's still not perfect, but it's better.    
+
+
+## v0.7.0  
+
+This version is a Release Candidate for version 1.0. While more testing is needed, this version should support all methods and body contents for Curl, Postman, and Swagger.  
+
+### New Features  
+- Enhanced support for Curl with data elements. `-d` and `--data` should both parse correctly now. JSON and form encoded should parse as well. Placeholders can be injected with variables as well.  
+- Minor text changes on ERROR messages.   
+- Cleaned up a stray print statement.  
+
+
+## v0.6.0  
+
+### New Features  
+- Added initial support for request bodies for Curl. Initial code supports JSON specified with -d.  
+
+### Known Issues  
+- Other forms of data, such as --data or form encoded, won't parse right now. More to come. TBD.
+- Curl parser might not inject variables into request bodies yet. I should probably test if it does. It might. But it might not. No promises.   
+
+
+## v0.5.1
+
+### Fixes  
+- Added some error handling for parsing Swagger files without Summary fields.
+
+
 ## v0.5.0
 
 - Added a new flag ```--headers``` to allow for arbitrary headers added to all requests.
